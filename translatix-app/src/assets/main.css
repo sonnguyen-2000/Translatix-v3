@@ -1,0 +1,212 @@
+@import "tailwindcss";
+
+:root[data-theme="dark"] {
+  --bg-main: #0f172a;
+  --bg-pattern: radial-gradient(
+    circle at 50% 0%,
+    rgba(30, 41, 59, 0.5) 0%,
+    #0f172a 70%
+  );
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --card-bg: rgba(30, 41, 59, 0.8);
+  --card-border: rgba(255, 255, 255, 0.1);
+  --hover-bg: rgba(255, 255, 255, 0.05);
+  --btn-bg: linear-gradient(to right, #7dd3fc, #a78bfa);
+  --btn-hover-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.4);
+  --bg-panel: #1e293b;
+  --bg-header: #111827;
+  --border-color: #334155;
+  --hover-bg: #334155;
+  --active-bg: #3b82f6;
+  --btn-bg: #3b82f6;
+  --btn-secondary-bg: #4b5563;
+}
+/* src/assets/main.css */
+
+/* src/assets/main.css */
+
+:root[data-theme="light"] {
+  /* --- Nền chung --- */
+  /* Nền xanh da trời rất nhạt, dịu mắt, chống chói */
+  --bg-main: #f0f9ff;
+  --bg-pattern: radial-gradient(circle at 50% 0%, #e0f2fe 0%, #f0f9ff 70%);
+
+  /* --- Nền cho các khu vực nội dung --- */
+  /* Panel và Card dùng nền trắng để sạch sẽ, nổi bật */
+  --bg-panel: #ffffff;
+  --bg-header: #ffffff;
+  --card-bg: rgba(255, 255, 255, 0.75); /* Hơi trong suốt để thấy nền */
+
+  /* --- Màu chữ --- */
+  /* Chữ màu đen-xám đậm để đảm bảo độ tương phản cao, dễ đọc */
+  --text-primary: #020617;
+  --text-secondary: #475569;
+
+  /* --- Viền & Trạng thái Hover --- */
+  /* Viền và nền hover màu xám rất nhạt, tinh tế */
+  --border-color: #e2e8f0;
+  --hover-bg: #f8fafc;
+  --card-border: rgba(0, 0, 0, 0.05);
+
+  /* --- Màu nhấn (Nút bấm & Active) --- */
+  /* Màu nhấn xanh dương đậm, tương phản tốt với chữ trắng */
+  --active-bg: #2563eb;
+  --btn-bg: #2563eb; /* Bỏ gradient, dùng màu đặc để dễ đọc */
+  --btn-secondary-bg: #e2e8f0;
+  --btn-hover-shadow: 0 8px 15px -3px rgba(37, 99, 235, 0.25);
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  background-color: var(--bg-main);
+  background-image: var(--bg-pattern);
+  color: var(--text-primary);
+  transition: background-color 0.4s ease, color 0.4s ease;
+  min-height: 100vh;
+}
+.card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 1.25rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  /* Bỏ màu nền của card, vì ::after sẽ đảm nhận việc này */
+  background-color: transparent; /* Đảm bảo hiệu ứng không tràn ra ngoài border-radius */
+}
+.card::before {
+  content: "";
+  position: absolute;
+  z-index: -2; /* Nằm dưới cùng */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 105%; /* Lớn hơn card một chút để không bị hụt góc khi xoay */
+  height: 105%;
+
+  /* Dải màu gradient để tạo vầng sáng */
+  background: conic-gradient(
+    from 180deg at 50% 50%,
+    #a78bfa,
+    /* Màu tím */ #7dd3fc,
+    /* Màu xanh */ #a78bfa /* Lặp lại để liền mạch */
+  );
+
+  /* Mặc định ẩn đi */
+  opacity: 0;
+  transition: opacity 0.4s ease-in-out;
+
+  /* Animation xoay tròn */
+  animation: rotateBorder 3s linear infinite;
+}
+
+.btn-primary {
+  background-image: var(--btn-bg);
+  padding: 0.75rem 2rem;
+  border-radius: 9999px;
+  color: white;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: inline-block;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+}
+.btn-primary:hover {
+  box-shadow: var(--btn-hover-shadow);
+  transform: translateY(-2px);
+}
+.fadeInUpScale {
+  animation: fadeInUpScale 0.7s ease-in-out forwards;
+  opacity: 0;
+}
+@keyframes fadeInUpScale {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.modal-overlay {
+  transition: opacity 0.3s ease-in-out;
+}
+.modal-content {
+  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+}
+
+.modal-enter {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+/* Trạng thái đang vào (active) */
+.modal-enter-active {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* Trạng thái bắt đầu thoát ra */
+.modal-exit {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Trạng thái đang thoát ra (active) */
+.modal-exit-active {
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 300ms, transform 300ms;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-panel);
+}
+::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+.event-command::before {
+  content: "";
+  position: absolute;
+  left: 1rem;
+  top: 1.5rem;
+  bottom: -1rem;
+  width: 2px;
+  background-color: var(--border-color);
+}
+.event-command:last-child::before {
+  display: none;
+}
+
+input,
+select,
+textarea {
+  background-color: var(--bg-main);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 0.375rem;
+}
+
+.key-value-code {
+  background-color: var(--hover-bg);
+  color: #facc15; /* Màu vàng cho code */
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+}
