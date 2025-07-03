@@ -12,11 +12,11 @@ ocr_instance = PaddleOCR(
     use_doc_unwarping=False,
     use_textline_orientation=False
 )
-print("✅ Model Comic đã tải xong.")
+print("✅ Model PaddleOCR đã sẵn sàng.")
 
 def analyze_image_page(image_path: str):
     """
-    Phân tích ảnh và xử lý định dạng kết quả dạng DICTIONARY từ PaddleOCR.
+    Phân tích ảnh bằng PaddleOCR và trả về danh sách vùng text.
     """
     if not os.path.exists(image_path):
         print(f"❌ File không tồn tại: {image_path}")
@@ -25,15 +25,15 @@ def analyze_image_page(image_path: str):
     try:
         img = cv2.imread(image_path)
         if img is None:
-            print(f"❌ Không đọc được ảnh: {image_path}")
+            print(f"❌ Không thể đọc ảnh: {image_path}")
             return []
     except Exception as e:
-        print(f"❌ Lỗi khi đọc file ảnh: {e}")
+        print(f"❌ Lỗi khi đọc ảnh: {e}")
         return []
 
     try:
         result = ocr_instance.ocr(img)
-        print(f"✅ Kết quả OCR từ {image_path} đã nhận.")
+        print(f"✅ OCR thành công: {image_path}")
     except Exception as e:
         print(f"❌ Lỗi khi chạy OCR: {e}")
         return []
@@ -47,7 +47,7 @@ def analyze_image_page(image_path: str):
         scores = ocr_data.get('rec_scores', [])
 
         if not (len(boxes) == len(texts) == len(scores)):
-            print("⚠️ Lỗi không đồng bộ dữ liệu trong kết quả OCR.")
+            print("⚠️ Lỗi không đồng bộ dữ liệu OCR.")
             return []
 
         for idx, box in enumerate(boxes):
@@ -75,15 +75,14 @@ def analyze_image_page(image_path: str):
                 regions.append(region_data)
 
             except (IndexError, TypeError) as e:
-                print(f"⚠️ Lỗi khi xử lý dòng OCR: {e}")
+                print(f"⚠️ Lỗi khi xử lý kết quả OCR: {e}")
                 continue
 
     return regions
 
-
 def initialize_comic_project(db: Session, folder_path: str):
     """
-    Khởi tạo project Comic, phân tích ảnh đầu tiên.
+    Khởi tạo project Comic, quét folder ảnh và xử lý ảnh đầu tiên.
     """
     project = crud.create_project_if_not_exists(
         db=db,
@@ -105,25 +104,17 @@ def initialize_comic_project(db: Session, folder_path: str):
         return f"file://{os.path.join(folder_path, file_name).replace('\\', '/')}"
 
     pages_data = []
-    pages_overview = []
 
     for i, name in enumerate(image_files):
+        image_path = os.path.join(folder_path, name)
         image_url = to_image_url(name)
-        status = "processed" if i == 0 else "unprocessed"
+        status = "unprocessed"
         regions = []
 
         if i == 0:
-            regions = analyze_image_page(os.path.join(folder_path, name))
-
-        page_id = f"page-{i+1}"
-
-        pages_data.append({
-            "id": page_id,
-            "name": name,
-            "status": status,
-            "imageUrl": image_url,
-            "thumbnailUrl": image_url,
-            "regions": [
+            status = "processed"
+            raw_regions = analyze_image_page(image_path)
+            regions = [
                 {
                     "id": r["id"],
                     "name": r["id"],
@@ -137,24 +128,22 @@ def initialize_comic_project(db: Session, folder_path: str):
                         "height": r["position"]["height"]
                     }
                 }
-                for r in regions
+                for r in raw_regions
             ]
-        })
 
-        # ✅ pages_overview đúng theo schema yêu cầu
-        pages_overview.append({
-            "id": page_id,
+        pages_data.append({
+            "id": f"page-{i + 1}",
             "name": name,
-            "status": status
+            "status": status,
+            "imageUrl": image_url,
+            "thumbnailUrl": image_url,
+            "regions": regions
         })
 
-    response_data = {
+    return {
         "id": project.id,
         "name": project.name,
         "platform": project.platform,
         "folder_path": project.folder_path,
-        "pages": pages_data,
-        "pages_overview": pages_overview  # ✅ KHỚP VỚI schema
+        "pages": pages_data
     }
-
-    return response_data

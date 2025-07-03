@@ -1,30 +1,31 @@
-# app/features/comic/schemas.py
 from pydantic import BaseModel
-from typing import List, Optional # Import Optional
+from typing import List, Optional, Literal
+
+class RegionPosition(BaseModel):
+    position: Literal["absolute"] = "absolute"
+    left: int
+    top: int
+    width: int
+    height: int
 
 class Region(BaseModel):
     id: str
-    source_text: str
-    confidence: Optional[float] = None # ✅ SỬA Ở ĐÂY: Thêm Optional
-
-# ... các class khác giữ nguyên ...
-class PageData(BaseModel):
-    id: str
     name: str
-    regions: List[Region]
+    originalText: str
+    confidence: float
+    position: RegionPosition
 
-class PageOverview(BaseModel):
+class ComicPage(BaseModel):
     id: str
     name: str
     status: str
+    imageUrl: str
+    thumbnailUrl: str
+    regions: List[Region] = []
 
 class ProjectDetails(BaseModel):
     id: int
     name: str
     platform: str
     folder_path: str
-    pages_overview: List[PageOverview]
-    initial_page_data: Optional[PageData] = None
-
-    class Config:
-        from_attributes = True
+    pages: List[ComicPage]
