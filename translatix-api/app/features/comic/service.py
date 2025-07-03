@@ -5,14 +5,14 @@ import os
 import cv2
 
 # Khởi tạo PaddleOCR
-print("\u0110ang tải model PaddleOCR cho Comic...")
-ocr_instance = PaddleOCR(  # Đổi thành False do không dùng song song với use_textline_orientation
+print("📦 Đang tải model PaddleOCR cho Comic...")
+ocr_instance = PaddleOCR(
     lang='en',
     use_doc_orientation_classify=False,
     use_doc_unwarping=False,
     use_textline_orientation=False
 )
-print("Model Comic đã tải xong.")
+print("✅ Model Comic đã tải xong.")
 
 def analyze_image_page(image_path: str):
     """
@@ -23,7 +23,6 @@ def analyze_image_page(image_path: str):
         return []
 
     try:
-        # Sử dụng cv2 để đọc ảnh, giúp tương thích tốt hơn
         img = cv2.imread(image_path)
         if img is None:
             print(f"❌ Không đọc được ảnh: {image_path}")
@@ -33,46 +32,35 @@ def analyze_image_page(image_path: str):
         return []
 
     try:
-        # Chạy OCR, nó sẽ trả về một list chứa 1 dict lớn
         result = ocr_instance.ocr(img)
-        print(f"📦 Kết quả OCR từ {image_path} đã nhận.")
-        # print(f"Raw result: {result}") # Bỏ comment dòng này nếu muốn xem chi tiết kết quả thô
+        print(f"✅ Kết quả OCR từ {image_path} đã nhận.")
     except Exception as e:
         print(f"❌ Lỗi khi chạy OCR: {e}")
         return []
 
     regions = []
-    
-    # ✅ SỬA Ở ĐÂY: Xử lý cấu trúc kết quả dạng dictionary
-    # Kiểm tra result có hợp lệ và chứa dữ liệu không
+
     if result and result[0] and isinstance(result[0], dict):
-        # Lấy dictionary dữ liệu từ phần tử đầu tiên của result
         ocr_data = result[0]
-        
-        # Lấy các danh sách cần thiết từ dictionary
         boxes = ocr_data.get('dt_polys', [])
         texts = ocr_data.get('rec_texts', [])
         scores = ocr_data.get('rec_scores', [])
 
-        # Kiểm tra xem các thành phần có đồng bộ không
         if not (len(boxes) == len(texts) == len(scores)):
             print("⚠️ Lỗi không đồng bộ dữ liệu trong kết quả OCR.")
             return []
 
-        # Lặp qua các kết quả bằng index
         for idx, box in enumerate(boxes):
             try:
                 text = texts[idx]
                 confidence = scores[idx]
-                
-                # Bỏ qua các kết quả không có chữ hoặc độ tin cậy thấp
+
                 if not text or confidence < 0.3:
                     continue
 
-                # Lấy tọa độ từ bounding box
                 top_left = box[0]
                 bottom_right = box[2]
-                
+
                 region_data = {
                     "id": f"region-{idx}",
                     "position": {
@@ -87,11 +75,11 @@ def analyze_image_page(image_path: str):
                 regions.append(region_data)
 
             except (IndexError, TypeError) as e:
-                # Bỏ qua nếu có lỗi không đồng bộ hoặc sai kiểu dữ liệu
                 print(f"⚠️ Lỗi khi xử lý dòng OCR: {e}")
                 continue
-            
+
     return regions
+
 
 def initialize_comic_project(db: Session, folder_path: str):
     """
@@ -113,28 +101,60 @@ def initialize_comic_project(db: Session, folder_path: str):
     except FileNotFoundError:
         return {"error": "Thư mục không tồn tại"}
 
+    def to_image_url(file_name):
+        return f"file://{os.path.join(folder_path, file_name).replace('\\', '/')}"
+
+    pages_data = []
+    pages_overview = []
+
+    for i, name in enumerate(image_files):
+        image_url = to_image_url(name)
+        status = "processed" if i == 0 else "unprocessed"
+        regions = []
+
+        if i == 0:
+            regions = analyze_image_page(os.path.join(folder_path, name))
+
+        page_id = f"page-{i+1}"
+
+        pages_data.append({
+            "id": page_id,
+            "name": name,
+            "status": status,
+            "imageUrl": image_url,
+            "thumbnailUrl": image_url,
+            "regions": [
+                {
+                    "id": r["id"],
+                    "name": r["id"],
+                    "originalText": r["source_text"],
+                    "confidence": r["confidence"],
+                    "position": {
+                        "position": "absolute",
+                        "left": r["position"]["x"],
+                        "top": r["position"]["y"],
+                        "width": r["position"]["width"],
+                        "height": r["position"]["height"]
+                    }
+                }
+                for r in regions
+            ]
+        })
+
+        # ✅ pages_overview đúng theo schema yêu cầu
+        pages_overview.append({
+            "id": page_id,
+            "name": name,
+            "status": status
+        })
+
     response_data = {
         "id": project.id,
         "name": project.name,
         "platform": project.platform,
         "folder_path": project.folder_path,
-        "pages_overview": [
-            {"id": f"page-{i+1}", "name": name, "status": "unprocessed"}
-            for i, name in enumerate(image_files)
-        ],
-        "initial_page_data": None
+        "pages": pages_data,
+        "pages_overview": pages_overview  # ✅ KHỚP VỚI schema
     }
-
-    if image_files:
-        first_image_path = os.path.join(folder_path, image_files[0])
-        print(f"🚀 Đang xử lý ảnh đầu tiên: {first_image_path}")
-        regions = analyze_image_page(first_image_path)
-
-        response_data["pages_overview"][0]["status"] = "processed"
-        response_data["initial_page_data"] = {
-            "id": "page-1",
-            "name": image_files[0],
-            "regions": regions
-        }
 
     return response_data

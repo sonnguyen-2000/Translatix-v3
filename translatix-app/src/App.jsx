@@ -3,17 +3,12 @@
 import { useState, useRef, useEffect } from "react";
 import { HomePage } from "./pages/HomePage";
 import { RPGEditor } from "./features/rpg/RPGEditor";
-import { fakeProjectData as fakeRpgData } from "./features/rpg/mockData";
 import { ComicEditor } from "./features/comic/ComicEditor";
-import { fakeComicData } from "./features/comic/mockData";
 import { Modal } from "./components/ui/Modal";
 import { platformData } from "./pages/platformData";
 import { UnityEditor } from "./features/unity/UnityEditor";
-import { fakeUnityData } from "./features/unity/mockData";
 import { UnrealEditor } from "./features/unreal/UnrealEditor";
-import { fakeUnrealData } from "./features/unreal/mockData";
 
-// Giữ nguyên các component toàn cục
 import { ThemeToggleButton } from "./components/ui/ThemeToggleButton";
 import { useStarfield } from "./hooks/useStarfield";
 import { setupInitialRecentFiles } from "./utils/fileUtils";
@@ -47,27 +42,80 @@ function App() {
   }, []);
 
   const handlePlatformSelect = (platformId) => {
-    // ĐÃ SỬA: Kiểm tra nếu platform là 'rpg' hoặc 'comic'
     setSelectedPlatform(platformData[platformId]);
     setIsModalOpen(true);
   };
 
-  const handleProjectOpen = () => {
-    if (selectedPlatform?.id === "rpg") {
-      setLoadedProject({ type: "rpg", data: fakeRpgData });
-      setActiveView("editor-rpg");
-    } else if (selectedPlatform?.id === "comic") {
-      setLoadedProject({ type: "comic", data: fakeComicData });
-      setActiveView("editor-comic");
-    } else if (selectedPlatform?.id === "unity") {
-      setLoadedProject({ type: "unity", data: fakeUnityData });
-      setActiveView("editor-unity");
-    } else if (selectedPlatform?.id === "unreal") {
-      setLoadedProject({ type: "unreal", data: fakeUnrealData });
-      setActiveView("editor-unreal");
+  const handleProjectOpen = async () => {
+    try {
+      // Mở hộp thoại chọn folder thông qua Electron preload API
+      const folderPath = await window.electronAPI.selectFolder();
+      if (!folderPath) return;
+
+      // Gọi API BE để khởi tạo project
+      const response = await fetch("http://localhost:8000/api/comic/open", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder_path: folderPath }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        alert("Lỗi khi khởi tạo project: " + data.error);
+        return;
+      }
+
+      if (selectedPlatform?.id === "comic") {
+        setLoadedProject({
+          type: "comic",
+          data: convertApiToComicProject(data),
+        });
+        setActiveView("editor-comic");
+      }
+    } catch (err) {
+      console.error("Lỗi khi mở project:", err);
     }
 
     setIsModalOpen(false);
+  };
+
+  const convertApiToComicProject = (apiData) => {
+    const folder = apiData.folder_path;
+
+    const pages = apiData.pages_overview.map((page) => {
+      const regionsRaw =
+        page.id === apiData.initial_page_data?.id
+          ? apiData.initial_page_data?.regions || []
+          : [];
+
+      return {
+        id: page.id,
+        name: page.name,
+        thumbnailUrl: `file://${folder}/${page.name}`,
+        imageUrl: `file://${folder}/${page.name}`,
+        regions: regionsRaw.map((r) => ({
+          id: r.id,
+          name: r.source_text,
+          originalText: r.source_text,
+          confidence: r.confidence,
+          position: {
+            position: "absolute",
+            left: r.position.x,
+            top: r.position.y,
+            width: r.position.width,
+            height: r.position.height,
+          },
+          icon: "🔲",
+        })),
+      };
+    });
+
+    return {
+      id: apiData.id,
+      name: apiData.name,
+      pages,
+    };
   };
 
   const handleModalClose = () => {
@@ -86,16 +134,16 @@ function App() {
       {activeView === "home" && (
         <HomePage onPlatformSelect={handlePlatformSelect} />
       )}
-      {activeView === "editor-rpg" && loadedProject && (
+      {activeView === "editor-rpg" && loadedProject?.type === "rpg" && (
         <RPGEditor project={loadedProject.data} onExit={handleEditorExit} />
       )}
-      {activeView === "editor-comic" && loadedProject && (
+      {activeView === "editor-comic" && loadedProject?.type === "comic" && (
         <ComicEditor project={loadedProject.data} onExit={handleEditorExit} />
       )}
-      {activeView === "editor-unity" && loadedProject && (
+      {activeView === "editor-unity" && loadedProject?.type === "unity" && (
         <UnityEditor project={loadedProject.data} onExit={handleEditorExit} />
       )}
-      {activeView === "editor-unreal" && loadedProject && (
+      {activeView === "editor-unreal" && loadedProject?.type === "unreal" && (
         <UnrealEditor project={loadedProject.data} onExit={handleEditorExit} />
       )}
       <Modal

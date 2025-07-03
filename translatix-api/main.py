@@ -14,7 +14,10 @@ database.Base.metadata.create_all(bind=database.engine)
 app = FastAPI(title="Translatix API")
 
 # --- Cấu hình CORS ---
-origins = ["*"]
+origins = [
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:5173"
+]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,

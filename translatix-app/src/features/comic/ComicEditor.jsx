@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 
 // --- COMPONENT CON ---
 
-// Panel bên trái: Hiển thị các trang và các vùng dịch
 function LeftPanel({
   project,
   activePage,
@@ -94,7 +93,6 @@ function LeftPanel({
   );
 }
 
-// Panel chính giữa: Hiển thị ảnh truyện tranh
 function MainViewer({ activePage, activeRegion, onRegionSelect }) {
   return (
     <main className="flex-1 flex flex-col p-4 items-center justify-center bg-bg-main">
@@ -128,12 +126,10 @@ function MainViewer({ activePage, activeRegion, onRegionSelect }) {
           ))}
         </div>
       </div>
-      {/* Thanh công cụ zoom... */}
     </main>
   );
 }
 
-// Panel bên phải: Hiển thị chi tiết vùng dịch và công cụ
 function RightPanel({ activeRegion }) {
   if (!activeRegion)
     return (
@@ -191,7 +187,6 @@ function RightPanel({ activeRegion }) {
             rows="3"
             placeholder="Nhập bản dịch..."></textarea>
         </div>
-        {/* ... Các fieldset và công cụ khác ... */}
       </div>
       <div
         className="p-4 border-t shrink-0 flex gap-4"
@@ -212,6 +207,7 @@ function RightPanel({ activeRegion }) {
 }
 
 // --- COMPONENT EDITOR CHÍNH ---
+
 export function ComicEditor({ project, onExit }) {
   const [activePageIndex, setActivePageIndex] = useState(0);
   const [activeRegionId, setActiveRegionId] = useState(null);
@@ -219,7 +215,6 @@ export function ComicEditor({ project, onExit }) {
   const activePage = project.pages[activePageIndex];
   const activeRegion = activePage.regions.find((r) => r.id === activeRegionId);
 
-  // Tự động chọn vùng dịch đầu tiên khi trang thay đổi
   useEffect(() => {
     if (activePage.regions.length > 0) {
       setActiveRegionId(activePage.regions[0].id);
